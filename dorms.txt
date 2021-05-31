@@ -1,0 +1,4 @@
+{
+    "your_dorm_number1":"youremailaddress@xx1.com",
+    "your_dorm_number2":"youremailaddress@xx2.com",
+}
