@@ -1,6 +1,5 @@
 # @author Hinux
 
-import math
 from os import times, write
 import re
 import requests
@@ -11,7 +10,10 @@ import time,random
 from email.mime.text import MIMEText
 import smtplib
 
-def sendEmail(toAddress:str,content:str):
+def sendEmail(toAddress:str,content:str,ifSendFlag:bool):
+
+    if not ifSendFlag:
+        return
 
     with open('./authcode.txt','r+') as f:
         authInfo=json.load(f)                    #Authentication Info
@@ -45,7 +47,7 @@ def getTbMeter(ssn:requests.Session,dorm:str):
         "__VIEWSTATEGENERATOR": __VIEWSTATEGENERATOR,
         "__EVENTTARGET": "",
         "__EVENTARGUMENT": "",
-        "hidtime": "", #"2021-05-31+15:47:01"
+        "hidtime": "",       #"2021-05-31+15:47:01"
         "txtname": dorm,
         "txtpwd": "",
         "ctl01": ""
@@ -57,11 +59,12 @@ def getTbMeter(ssn:requests.Session,dorm:str):
     tbMeter=re.findall(">0000[0-9]*<",defaultPage)
     return tbMeter[0][1:-1]
 
+#Query related info
 def query(
-    ssn:requests.Session,
-    itemIndex:int,   #0:当前剩余数量 1:当前剩余金额
-    tbMeter:str,
-    dorm:str    
+    ssn:requests.Session,   #An existing session.
+    itemIndex:int,          #The remaining value queryed. 0:当前剩余数量(Currently remaining power) 1:当前剩余金额(Currently remaining amount)
+    tbMeter:str,            #The number of your electricity meter.
+    dorm:str                #The number of your dorm.
 ):
     queryUrl="http://202.116.25.12/default.aspx"
     items=["当前剩余数量","当前剩余金额"]
@@ -127,11 +130,11 @@ def query(
     res=re.findall(r"\"[0-9\.]*\"",resultPage)[2]
     return float(str(res).replace("\"",""))
 
-def mainFunction(ifLog:bool):
+def mainFunction(ifLog:bool,ifSendEmail:bool):
     ssn=requests.Session()
     #dorm=input("Please input your dorm:")
     #itemIndex=int(input("Please input the Index (0:Remaining volt 1:Remaining amount): "))
-    
+
     with open("./dorms.txt","r") as f:
         dorms=json.load(f)
     
@@ -140,23 +143,34 @@ def mainFunction(ifLog:bool):
         mailAddress=dorms[dorm]
         itemIndex=1                         #当前剩余金额
         tbMeter=getTbMeter(ssn,dorm)
-        res=query(ssn,itemIndex,tbMeter,dorm)
+        res:float=query(ssn,itemIndex,tbMeter,dorm)
         print(f"**********\nDorm: {dorm}\nResult: {res}\nEmail: {dorms[dorm]}")
 
-        now=datetime.datetime.now().strftime("%H:%M:%S")
+        now:str=datetime.datetime.now().strftime("%H:%M:%S")
         
         if ifLog:
             with open("./record.txt","a+") as f:
                 f.write(f"{now} ¥{res}\n")
-        
+
         if(res<=10):
             print("Low Power!")
-            sendEmail(mailAddress,f"Insufficient amount (¥{res} remaining)!\n Recharge in order to avoid outage")
+            sendEmail(mailAddress,f"Insufficient amount (¥{res} remaining)!\n Recharge in order to avoid outage",ifSendEmail)
 
 
 if __name__=="__main__":
+    
+    ifSendEmail=True
+    oldHour=datetime.datetime.now().hour
+
     while True:
-        mainFunction(1)
-        s=round(random.random()*500,2)
+        newHour=datetime.datetime.now().hour
+        if newHour > oldHour:
+            ifSendEmail=True
+            oldHour=newHour
+
+        mainFunction(False,ifSendEmail)         #Tell the program do not record and send an email per hour.
+        ifSendEmail=False
+        random.seed(datetime.datetime.now())
+        s:float=round(random.random()*1000,2)
         print(f"Next scan would arrive after {s}s")
-        time.sleep(s)
+        time.sleep(s)                           #Sleep in order to simulate a real querying user
