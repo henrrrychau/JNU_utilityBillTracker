@@ -1,5 +1,5 @@
 # JNU_utilityBillTracker
-Getting stuck in the uncertainty of outage? Here is a tracker for your utility bill on the Zhuhai Campus of Jinan University as the solution.  
+Getting stuck in the uncertainty of outage? Here is a tracker for your utility bill at the Zhuhai Campus of Jinan University as the solution.  
   
 # Prerequisites
 The version of Python should be equal to or newer than 3.0 .  
